@@ -16,7 +16,8 @@ const EgxDashboard = () => {
 
   // Search state
   const [searchSymbol, setSearchSymbol] = useState("");
-  const [searchDate, setSearchDate] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [historyResult, setHistoryResult] = useState(null);
 
   // 1. Scraping Action
@@ -101,9 +102,13 @@ const EgxDashboard = () => {
       const res = await axios.get(`${API_BASE}/company/${searchSymbol}/history`);
       let data = res.data;
 
-      // Filter by date if provided
-      if (searchDate) {
-        data = data.filter((item) => item["التاريخ"] === searchDate);
+      // Filter by date range if provided
+      if (startDate && endDate) {
+        data = data.filter((item) => item["التاريخ"] >= startDate && item["التاريخ"] <= endDate);
+      } else if (startDate) {
+        data = data.filter((item) => item["التاريخ"] >= startDate);
+      } else if (endDate) {
+        data = data.filter((item) => item["التاريخ"] <= endDate);
       }
 
       setHistoryResult(data);
@@ -237,8 +242,15 @@ const EgxDashboard = () => {
               />
               <input 
                 type="date" 
-                value={searchDate} 
-                onChange={(e) => setSearchDate(e.target.value)}
+                title="من تاريخ"
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <input 
+                type="date" 
+                title="إلى تاريخ"
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)}
               />
               <button className="btn-primary btn-grey" onClick={handleHistorySearch} disabled={loading}>
                 <Search size={18} />
@@ -247,7 +259,7 @@ const EgxDashboard = () => {
             </div>
 
             <div className="history-results card">
-              {historyResult ? renderTable(historyResult) : <p className="text-muted">أدخل رمز الشركة وتاريخاً لعرض بياناتها.</p>}
+              {historyResult ? renderTable(historyResult) : <p className="text-muted">أدخل رمز الشركة واختر فترة زمنية لعرض السجل.</p>}
             </div>
           </div>
         )}
