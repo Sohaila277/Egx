@@ -3,7 +3,11 @@ const cheerio = require("cheerio");
 const fs = require("fs-extra");
 const path = require("path");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+const DATA_DIR = path.join(
+  __dirname,
+  "..",
+  "data"
+);
 
 const ACTIVITIES_FILE = path.join(
   DATA_DIR,
@@ -13,6 +17,11 @@ const ACTIVITIES_FILE = path.join(
 const HISTORY_FILE = path.join(
   DATA_DIR,
   "activityHistory.json"
+);
+
+const COMPANIES_FILE = path.join(
+  DATA_DIR,
+  "companies.json"
 );
 
 function loadActivities() {
@@ -98,6 +107,11 @@ async function syncActivities() {
 
     const history =
       loadHistory();
+      
+    let companies = [];
+    if (fs.existsSync(COMPANIES_FILE)) {
+      companies = fs.readJsonSync(COMPANIES_FILE);
+    }
 
     const newActivities = [];
 
@@ -110,17 +124,37 @@ async function syncActivities() {
         `Found category: ${activityName}`
       );
 
-      const table =
-        $(el)
-          .next("div")
-          .find("table");
+      let table = $(el).closest('.accordion-item').find('table');
+      if (table.length === 0) {
+        table = $(el).parent().parent().next().find("table");
+      }
+      if (table.length === 0) {
+        table = $(el).next("div").find("table");
+      }
 
       table
-        .find("span[id*='lblISIN']")
+        .find("tr")
         .each((j, row) => {
-
-          const symbolId =
-            $(row).text().trim();
+          const isinSpan = $(row).find("span[id*='lblISIN']");
+          let symbolId = "";
+          
+          if (isinSpan.length > 0) {
+            symbolId = isinSpan.text().trim();
+          } else {
+            // Fallback for tables without lblISIN (like CatSS)
+            const tdName = $(row).find("td:nth-child(3)").text().trim();
+            if (!tdName || tdName.includes("الاسم")) return; // skip headers or empty
+            
+            // Try to match with companies.json by name
+            const matchedCompany = companies.find(c => c.CompanyName && c.CompanyName.trim() === tdName);
+            if (matchedCompany) {
+              symbolId = matchedCompany.Symbolid;
+            } else {
+              symbolId = tdName; // Fallback to raw Arabic Name
+            }
+          }
+          
+          if (!symbolId) return;
 
           const oldActivity =
             existingActivities.find(
